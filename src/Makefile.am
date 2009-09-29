@@ -5,6 +5,6 @@ bin_PROGRAMS = cview
 cview_CFLAGS = $(DEPS_CFLAGS)
 cview_LDADD = $(DEPS_LIBS)
 cview_SOURCES = \
-	cview.c \
+	cview.c
 
 MAINTAINERCLEANFILES = Makefile.in config.h.in

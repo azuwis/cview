@@ -3,7 +3,7 @@
  * This program demonstrates the minimum necessary code needed to use
  * GtkImageView.
  **/
-#include <src/gtkimageview.h>
+#include <gtkimageview/gtkimageview.h>
 
 int
 main (int argc, char *argv[])
@@ -11,7 +11,7 @@ main (int argc, char *argv[])
     gtk_init (&argc, &argv);
     GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     GtkWidget *view = gtk_image_view_new ();
-    char *fname = "tests/gnome_logo.jpg";
+    char *fname = argv[1];
     GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file (fname, NULL);
     gtk_image_view_set_pixbuf (GTK_IMAGE_VIEW (view), pixbuf, TRUE);
     gtk_container_add (GTK_CONTAINER (window), view);
