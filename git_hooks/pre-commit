@@ -1,16 +1,22 @@
-#!/bin/bash
+#!/bin/sh
+#
+# Check that the code follows a consistent code style
+#
 
-files=$(git diff --cached --name-only --diff-filter=AM -z)
+#astyleoptions="--indent=spaces=4 --brackets=linux --indent-labels --pad=oper --one-line=keep-statements --convert-tabs --indent-preprocessor"
 
-      echo "Pre-commit hook, indent added/modified files:"
-      for i in $files
-      do
-        echo $i
-        done
-        echo "Astyle running result:"
+astyleoptions="--style=gnu"
 
-        astyle --style=gnu $files
-
-                       git add $files
-
-                       echo "End pre-commit hook"
+echo "--Checking style--"
+files=$(git diff-index --name-only --diff-filter=AM HEAD | grep -E '\.[ch](pp)?$')
+if [ $files ]; then
+	formatted=$(astyle -n $astyleoptions $files 2> /dev/null | awk '/^formatted/ {print $2}')
+	if [ $formatted ]; then
+		git diff $formatted | tee
+		echo "Code style error in $formatted."
+		echo "The files have been reindent by astyle, see above diff output."
+		echo "Please review and run 'git add $formatted && git commit'"
+		exit 1
+	fi
+fi
+echo "--Checking style pass--"
