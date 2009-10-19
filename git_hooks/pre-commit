@@ -15,7 +15,7 @@ do
 	fi
 	rm -f ${file}~
 done
-if [ $changedfiles ]; then
+if [ "$changedfiles" ]; then
 	echo "Code style error in $changedfiles"
 	echo "The files have been reindent by GNU indent, see above diff output"
 	echo "Please review and run 'git add $changedfiles && git commit'"
