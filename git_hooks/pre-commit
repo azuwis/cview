@@ -3,20 +3,22 @@
 # Check that the code follows a consistent code style
 #
 
-#astyleoptions="--indent=spaces=4 --brackets=linux --indent-labels --pad=oper --one-line=keep-statements --convert-tabs --indent-preprocessor"
-
-astyleoptions="--style=gnu"
+indentoptions="-npro -kr -i8 -ts8 -sob -l80 -ss -ncs -cp1 -il0"
 
 echo "--Checking style--"
 files=$(git diff-index --name-only --diff-filter=AM HEAD | grep -E '\.[ch](pp)?$')
-if [ $files ]; then
-	formatted=$(astyle -n $astyleoptions $files 2> /dev/null | awk '/^formatted/ {print $2}')
-	if [ $formatted ]; then
-		git diff $formatted | tee
-		echo "Code style error in $formatted."
-		echo "The files have been reindent by astyle, see above diff output."
-		echo "Please review and run 'git add $formatted && git commit'"
-		exit 1
+indent $indentoptions $files 2> /dev/null
+for file in $files
+do
+	if ! diff -u ${file}~ ${file}; then
+		changedfiles="$changedfiles $file"
 	fi
+	rm -f ${file}~
+done
+if [ $changedfiles ]; then
+	echo "Code style error in $changedfiles"
+	echo "The files have been reindent by GNU indent, see above diff output"
+	echo "Please review and run 'git add $changedfiles && git commit'"
+	exit 1
 fi
 echo "--Checking style pass--"
