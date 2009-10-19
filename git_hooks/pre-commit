@@ -1,0 +1,16 @@
+#!/bin/bash
+
+files=$(git diff --cached --name-only --diff-filter=AM -z)
+
+      echo "Pre-commit hook, indent added/modified files:"
+      for i in $files
+      do
+        echo $i
+        done
+        echo "Astyle running result:"
+
+        astyle --style=gnu $files
+
+                       git add $files
+
+                       echo "End pre-commit hook"
