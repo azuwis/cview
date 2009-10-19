@@ -11,12 +11,6 @@
 #include "unrar.h"
 #include "buffer.h"
 
-typedef struct
-{
-	GError *error;
-	GdkPixbufLoader *loader;
-} rarcb_userdata;
-
 int
 test(char *rarfile)
 {
@@ -56,15 +50,17 @@ static int rarcbproc(UINT msg, LONG UserData, LONG P1, LONG P2)
 
 static int rarcbpixbuf(UINT msg, LONG UserData, LONG P1, LONG P2)
 {
+	GError *error = NULL;
     if (msg == UCM_PROCESSDATA) {
-		rarcb_userdata *userdata = (rarcb_userdata *)UserData;
-		//GdkPixbufLoader *loader = (GdkPixbufLoader *) UserData;
+         GdkPixbufLoader *loader = (GdkPixbufLoader *) UserData;
                                                        
-        if (!gdk_pixbuf_loader_write(userdata->loader, (void *) P1, P2, &userdata->error)) {
+        if (!gdk_pixbuf_loader_write(loader, (void *) P1, P2, &error)) {
 			g_warning("loading image in rar callback failed\n");
+			g_free(error);
             return -1;                                 
         }
     }
+	g_free(error);
     return 0;
 }
 
@@ -123,12 +119,9 @@ void extract_rar_file_into_buffer(buffer * buf, const char *archname,
     }
 }
 
-GdkPixbuf *
-extract_rar_file_into_pixbuf(const char *archname, const char *archpath)
+void extract_rar_file_into_pixbuf(GdkPixbufLoader *loader, const char *archname,
+                                         const char *archpath)
 {
-	rarcb_userdata *userdata;
-	GdkPixbuf *pixbuf;
-
     struct RAROpenArchiveData arcdata;
     int code = 0;
     int ret;
@@ -139,13 +132,10 @@ extract_rar_file_into_pixbuf(const char *archname, const char *archpath)
     arcdata.CmtBuf = NULL;
     arcdata.CmtBufSize = 0;
     hrar = RAROpenArchive(&arcdata);
-	
-	userdata->error = NULL;
-	userdata->loader = gdk_pixbuf_loader_new ();
 
     if (hrar == NULL)
-        return NULL;
-    RARSetCallback(hrar, rarcbpixbuf, (LONG) userdata);
+        return;
+    RARSetCallback(hrar, rarcbpixbuf, (LONG) loader);
     do {
         struct RARHeaderData header;
 
@@ -154,9 +144,14 @@ extract_rar_file_into_pixbuf(const char *archname, const char *archpath)
                 break;
             RARCloseArchive(hrar);
             //test_rar_file_password(buf, archname, archpath);
-            return NULL;
+            return;
         }
         if (strcasecmp(header.FileName, archpath) == 0) {
+
+            //if (buf->ptr == NULL) {
+            //    RARCloseArchive(hrar);
+            //    return;
+            //}
 
             code = RARProcessFile(hrar, RAR_TEST, NULL, NULL);
             break;
@@ -166,14 +161,26 @@ extract_rar_file_into_pixbuf(const char *archname, const char *archpath)
 
     if (code == 22) {
         //test_rar_file_password(buf, archname, archpath);
-        return NULL;
+        return;
     }
     if (code != 0) {
-		g_object_unref(userdata->loader);
+		g_object_unref(loader);
     }
-	gdk_pixbuf_loader_close (userdata->loader, &userdata->error);
-	pixbuf = g_object_ref(gdk_pixbuf_loader_get_pixbuf(userdata->loader));
-	g_object_unref(userdata->loader);
+}
+
+GdkPixbuf *
+load_pixbuf_from_archive(const char *archname, const char *archpath)
+{
+	GError *error = NULL;
+	GdkPixbufLoader *loader;
+    GdkPixbuf *pixbuf;
+
+	loader = gdk_pixbuf_loader_new ();
+	extract_rar_file_into_pixbuf(loader, archname, archpath);
+	gdk_pixbuf_loader_close (loader, &error);
+
+    pixbuf = g_object_ref(gdk_pixbuf_loader_get_pixbuf(loader));
+	g_object_unref(loader);
 	return pixbuf;
 }
 
@@ -220,7 +227,7 @@ main (int argc, char *argv[])
     GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     GtkWidget *view = gtk_image_view_new ();
 
-    GdkPixbuf *pixbuf = extract_rar_file_into_pixbuf(archname, archpath);
+    GdkPixbuf *pixbuf = load_pixbuf_from_archive(archname, archpath);
 
     //GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file (fname, NULL);
     gtk_image_view_set_pixbuf (GTK_IMAGE_VIEW (view), pixbuf, TRUE);
