@@ -8,17 +8,18 @@
 
 static int rarcbpixbuf(UINT msg, LONG UserData, LONG P1, LONG P2)
 {
-	GError *error = NULL;
 	if (msg == UCM_PROCESSDATA) {
+		GError *error = NULL;
 		GdkPixbufLoader *loader = (GdkPixbufLoader *) UserData;
 
-		if (!gdk_pixbuf_loader_write(loader, (void *)P1, P2, &error)) {
-			g_warning("loading image in rar callback failed\n");
-			g_free(error);
+		gdk_pixbuf_loader_write(loader, (void *)P1, P2, &error);
+		if (error != NULL) {
+			g_warning("load image in rar callback failed: %s\n",
+				  error->message);
+			g_error_free(error);
 			return -1;
 		}
 	}
-	g_free(error);
 	return 0;
 }
 
@@ -96,9 +97,15 @@ GdkPixbufAnimation *load_anime_from_archive(const char *archname,
 
 	loader = gdk_pixbuf_loader_new();
 	extract_rar_file_into_pixbuf(loader, archname, archpath);
-	gdk_pixbuf_loader_close(loader, &error);
+	if (!gdk_pixbuf_loader_close(loader, &error)) {
+		g_warning("load image in archive failed: %s\n", error->message);
+		g_free(error);
+		g_object_unref(loader);
+		return NULL;
+	}
 
 	pixbuf = g_object_ref(gdk_pixbuf_loader_get_animation(loader));
+	g_free(error);
 	g_object_unref(loader);
 	return pixbuf;
 }
