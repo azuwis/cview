@@ -35,6 +35,7 @@ static gboolean is_fullscreen = FALSE;
 static GtkWidget *statusbar = NULL;
 static GList *filelist = NULL;
 static GList *curfile = NULL;
+static char *archname = NULL;
 
 // Label that displays the active selection.
 static GtkWidget *sel_info_label = NULL;
@@ -74,10 +75,14 @@ static void push_image_info(char *basename, GdkPixbufAnimation * anim)
 	g_free(msg);
 }
 
-static void load_filename(char *path)
+static void load_filename(const char *archname, const char *path)
 {
-	char *archname = "../img/test.rar";
-	GdkPixbufAnimation *anim = load_anime_from_archive(archname, path);
+	GdkPixbufAnimation *anim = NULL;
+
+	if (archname == NULL)
+		anim = gdk_pixbuf_animation_new_from_file(path, NULL);
+	else
+		anim = load_anime_from_archive(archname, path);
 	if (!anim) {
 		printf("No anim!\n");
 		return;
@@ -161,7 +166,7 @@ static void open_image_cb(GtkAction * action)
 		fname =
 		    gtk_file_chooser_get_filename(GTK_FILE_CHOOSER
 						  (open_dialog));
-		load_filename(fname);
+		load_filename(archname, fname);
 		g_free(fname);
 	}
 	gtk_widget_hide(GTK_WIDGET(open_dialog));
@@ -219,20 +224,38 @@ static void change_transp_type_cb(GtkAction * action, GtkRadioAction * current)
 
 static void go_next_cb(GtkAction * action)
 {
-	if (curfile == NULL)
+	GList *nextfile = NULL;
+	if (curfile == NULL) {
+		curfile = g_list_first(filelist);
+		load_filename(archname, curfile->data);
 		return;
-	curfile = curfile->next;
-	if (curfile != NULL)
-		load_filename(curfile->data);
+	} else {
+		nextfile = g_list_next(curfile);
+		if (nextfile == NULL) {
+			return;
+		} else {
+			curfile = nextfile;
+			load_filename(archname, curfile->data);
+		}
+	}
 }
 
 static void go_prev_cb(GtkAction * action)
 {
-	if (curfile == NULL)
+	GList *prevfile = NULL;
+	if (curfile == NULL) {
+		curfile = g_list_first(filelist);
+		load_filename(archname, curfile->data);
 		return;
-	curfile = curfile->prev;
-	if (curfile != NULL)
-		load_filename(curfile->data);
+	} else {
+		prevfile = g_list_previous(curfile);
+		if (prevfile == NULL) {
+			return;
+		} else {
+			curfile = prevfile;
+			load_filename(archname, curfile->data);
+		}
+	}
 }
 
 static void menu_item_select_cb(GtkMenuItem * proxy)
@@ -662,8 +685,6 @@ int main(int argc, char *argv[])
 {
 	void *handle = load_libunrar(handle);
 	char **filenames = NULL;
-	int i = 0;
-	char *file = NULL;
 	GOptionEntry options[] = {
 		{
 		 G_OPTION_REMAINING, '\0', 0, G_OPTION_ARG_FILENAME_ARRAY,
@@ -685,11 +706,14 @@ int main(int argc, char *argv[])
 
 	setup_main_window();
 
+	//GdkPixbuf *pi = load_pixbuf_from_archive("../img/test.rar", "404.gif");
+
 	if (filenames) {
-		filelist = get_filelist_from_archive("../img/test.rar");
-		curfile = filelist;
-		curfile = curfile->next;
-		load_filename(curfile->data);
+		archname = filenames[0];
+		filelist = get_filelist_from_archive(archname);
+		curfile = g_list_first(filelist);
+		if (curfile != NULL)
+			load_filename(archname, curfile->data);
 	}
 
 	gtk_widget_show_all(GTK_WIDGET(main_window));

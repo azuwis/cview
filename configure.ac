@@ -9,6 +9,7 @@ AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 
 # Checks for programs.
 AC_PROG_CC
+AM_PROG_CC_C_O
 
 # Checks for libraries.
 PKG_CHECK_MODULES(DEPS, gthread-2.0 gio-2.0 >= 2.17.2 gtk+-2.0 gtkimageview >= 1.3)
@@ -17,11 +18,10 @@ PKG_CHECK_MODULES(DEPS, gthread-2.0 gio-2.0 >= 2.17.2 gtk+-2.0 gtkimageview >= 1
 AC_CHECK_HEADERS([stdlib.h string.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_TYPE_SIZE_T
 
 # Checks for library functions.
 AC_CHECK_FUNCS([strcasecmp])
 
 AC_CONFIG_FILES([Makefile
-                 src/Makefile])
+		 src/Makefile])
 AC_OUTPUT

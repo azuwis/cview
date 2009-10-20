@@ -76,12 +76,21 @@ static void extract_rar_file_into_pixbuf(GdkPixbufLoader * loader,
 GdkPixbuf *load_pixbuf_from_archive(const char *archname, const char *archpath)
 {
 	GError *error = NULL;
-	GdkPixbufLoader *loader;
-	GdkPixbuf *pixbuf;
+	GdkPixbufLoader *loader = NULL;
+	GdkPixbuf *pixbuf = NULL;
 
 	loader = gdk_pixbuf_loader_new();
+	if (loader == NULL)
+		return NULL;
+
 	extract_rar_file_into_pixbuf(loader, archname, archpath);
 	gdk_pixbuf_loader_close(loader, &error);
+	if (error != NULL) {
+		g_warning("load image in archive failed: %s\n", error->message);
+		g_error_free(error);
+		g_object_unref(loader);
+		return NULL;
+	}
 
 	pixbuf = g_object_ref(gdk_pixbuf_loader_get_pixbuf(loader));
 	g_object_unref(loader);
@@ -92,27 +101,32 @@ GdkPixbufAnimation *load_anime_from_archive(const char *archname,
 					    const char *archpath)
 {
 	GError *error = NULL;
-	GdkPixbufLoader *loader;
-	GdkPixbufAnimation *pixbuf;
+	GdkPixbufLoader *loader = NULL;
+	GdkPixbufAnimation *anim = NULL;
 
 	loader = gdk_pixbuf_loader_new();
+	if (loader == NULL)
+		return NULL;
+
 	extract_rar_file_into_pixbuf(loader, archname, archpath);
-	if (!gdk_pixbuf_loader_close(loader, &error)) {
+	gdk_pixbuf_loader_close(loader, &error);
+	if (error != NULL) {
 		g_warning("load image in archive failed: %s\n", error->message);
-		g_free(error);
+		g_error_free(error);
 		g_object_unref(loader);
 		return NULL;
 	}
 
-	pixbuf = g_object_ref(gdk_pixbuf_loader_get_animation(loader));
-	g_free(error);
+	anim = g_object_ref(gdk_pixbuf_loader_get_animation(loader));
 	g_object_unref(loader);
-	return pixbuf;
+	return anim;
 }
 
+/* all filelist->data shoud be g_free() */
 GList *get_filelist_from_archive(const char *archname)
 {
-	GList *filelist;
+	GList *filelist = NULL;
+	gchar *filename = NULL;
 
 	struct RAROpenArchiveData arcdata;
 	int ret;
@@ -136,7 +150,8 @@ GList *get_filelist_from_archive(const char *archname)
 			//test_rar_file_password(buf, archname, archpath);
 			return;
 		}
-		g_list_append(filelist, header.FileName);
+		filename = g_strdup(header.FileName);
+		filelist = g_list_append(filelist, filename);
 	} while (RARProcessFile(hrar, RAR_SKIP, NULL, NULL) == 0);
 	RARCloseArchive(hrar);
 
@@ -172,4 +187,5 @@ void *load_libunrar(void *handle)
 		fprintf(stderr, "%s\n", error);
 		exit(EXIT_FAILURE);
 	}
+	return handle;
 }
