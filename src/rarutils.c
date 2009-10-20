@@ -86,7 +86,8 @@ GdkPixbuf *load_pixbuf_from_archive(const char *archname, const char *archpath)
 	extract_rar_file_into_pixbuf(loader, archname, archpath);
 	gdk_pixbuf_loader_close(loader, &error);
 	if (error != NULL) {
-		g_warning("load image in archive failed: %s\n", error->message);
+		g_warning("load image \"%s\" in \"%s\" failed: %s\n", archpath,
+			  archname, error->message);
 		g_error_free(error);
 		g_object_unref(loader);
 		return NULL;
@@ -111,7 +112,8 @@ GdkPixbufAnimation *load_anime_from_archive(const char *archname,
 	extract_rar_file_into_pixbuf(loader, archname, archpath);
 	gdk_pixbuf_loader_close(loader, &error);
 	if (error != NULL) {
-		g_warning("load image in archive failed: %s\n", error->message);
+		g_warning("load image \"%s\" in \"%s\" failed: %s\n", archpath,
+			  archname, error->message);
 		g_error_free(error);
 		g_object_unref(loader);
 		return NULL;

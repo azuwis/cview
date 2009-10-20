@@ -480,7 +480,7 @@ static const GtkActionEntry go_actions[] = {
 	{
 	 "GoNext", NULL,
 	 "_Next Page",
-	 "<control>N",
+	 "N",
 	 "Go to next page",
 	 G_CALLBACK(go_next_cb)
 	 },
@@ -488,7 +488,7 @@ static const GtkActionEntry go_actions[] = {
 	 "GoPrev",
 	 NULL,
 	 "_Prev Page",
-	 "<control>P",
+	 "P",
 	 "Go to prev page",
 	 G_CALLBACK(go_prev_cb)
 	 }
@@ -705,8 +705,6 @@ int main(int argc, char *argv[])
 	painter = gtk_image_tool_painter_new(GTK_IMAGE_VIEW(view));
 
 	setup_main_window();
-
-	//GdkPixbuf *pi = load_pixbuf_from_archive("../img/test.rar", "404.gif");
 
 	if (filenames) {
 		archname = filenames[0];
