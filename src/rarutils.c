@@ -6,6 +6,36 @@
 #include "unrar.h"
 #include "rarutils.h"
 
+static gboolean is_supported_by_gdkpixbuf(const char *filename)
+{
+	gboolean ret = FALSE;
+	GSList *formatlist = NULL;
+	GSList *formatlisthead = NULL;
+	for (formatlist = formatlisthead = gdk_pixbuf_get_formats();
+	     formatlist != NULL; formatlist = g_slist_next(formatlist)) {
+		GdkPixbufFormat *pixformat =
+		    (GdkPixbufFormat *) formatlist->data;
+		gchar **extensions =
+		    gdk_pixbuf_format_get_extensions(pixformat);
+		int i, j;
+		for (i = 0; extensions[i] != NULL; i++) {
+			for (j = 0; extensions[i][j] != NULL; j++) {
+			}
+		}
+		g_strfreev(extensions);
+	}
+	g_slist_free(formatlisthead);
+
+	GtkFileFilterInfo filter_info;
+	filter_info.contains = GTK_FILE_FILTER_FILENAME;
+	gchar *lower_name = g_ascii_strdown(filename, -1);
+	filter_info.filename = lower_name;
+	if (gtk_file_filter_filter(fileFormatsFilter, &filter_info)) {
+	ret = TRUE}
+	g_free(lower_name);
+	return ret;
+}
+
 static int rarcbpixbuf(UINT msg, LONG UserData, LONG P1, LONG P2)
 {
 	if (msg == UCM_PROCESSDATA) {
@@ -153,7 +183,8 @@ GList *get_filelist_from_archive(const char *archname)
 			return;
 		}
 		filename = g_strdup(header.FileName);
-		filelist = g_list_append(filelist, filename);
+		if (is_supported_by_gdkpixbuf(filename))
+			filelist = g_list_append(filelist, filename);
 	} while (RARProcessFile(hrar, RAR_SKIP, NULL, NULL) == 0);
 	RARCloseArchive(hrar);
 
