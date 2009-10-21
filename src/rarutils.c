@@ -9,29 +9,39 @@
 static gboolean is_supported_by_gdkpixbuf(const char *filename)
 {
 	gboolean ret = FALSE;
+	GSList *fileFormatsIterator;
+	GtkFileFilterInfo info;
+	GtkFileFilter *filter = NULL;
 	GSList *formatlist = NULL;
 	GSList *formatlisthead = NULL;
+	gchar *buf = NULL;
+
+	filter = gtk_file_filter_new();
+	//gtk_file_filter_add_pixbuf_formats(filter);
 	for (formatlist = formatlisthead = gdk_pixbuf_get_formats();
 	     formatlist != NULL; formatlist = g_slist_next(formatlist)) {
 		GdkPixbufFormat *pixformat =
 		    (GdkPixbufFormat *) formatlist->data;
 		gchar **extensions =
 		    gdk_pixbuf_format_get_extensions(pixformat);
-		int i, j;
+		int i;
 		for (i = 0; extensions[i] != NULL; i++) {
-			for (j = 0; extensions[i][j] != NULL; j++) {
-			}
+			buf = (char *)g_malloc(strlen(extensions[i]) + 3);
+			sprintf(buf, "*.%s", extensions[i]);
+			gtk_file_filter_add_pattern(filter, buf);
+			g_free(buf);
 		}
 		g_strfreev(extensions);
 	}
 	g_slist_free(formatlisthead);
 
-	GtkFileFilterInfo filter_info;
-	filter_info.contains = GTK_FILE_FILTER_FILENAME;
+	info.contains = GTK_FILE_FILTER_FILENAME | GTK_FILE_FILTER_DISPLAY_NAME;
 	gchar *lower_name = g_ascii_strdown(filename, -1);
-	filter_info.filename = lower_name;
-	if (gtk_file_filter_filter(fileFormatsFilter, &filter_info)) {
-	ret = TRUE}
+	info.filename = info.display_name = lower_name;
+
+	if (gtk_file_filter_filter(filter, &info)) {
+		ret = TRUE;
+	}
 	g_free(lower_name);
 	return ret;
 }
