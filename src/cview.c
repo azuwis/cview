@@ -708,7 +708,10 @@ int main(int argc, char *argv[])
 
 	if (filenames) {
 		archname = filenames[0];
-		filelist = get_filelist_from_archive(archname);
+		GtkFileFilter *gdkpixbuf_filter =
+		    load_gdkpixbuf_filename_filter();
+		filelist =
+		    get_filelist_from_archive(archname, gdkpixbuf_filter);
 		curfile = g_list_first(filelist);
 		if (curfile != NULL)
 			load_filename(archname, curfile->data);

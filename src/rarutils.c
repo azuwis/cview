@@ -6,34 +6,10 @@
 #include "unrar.h"
 #include "rarutils.h"
 
-static gboolean is_supported_by_gdkpixbuf(const char *filename)
+static gboolean gtk_filename_filter(char *filename, GtkFileFilter * filter)
 {
 	gboolean ret = FALSE;
-	GSList *fileFormatsIterator;
 	GtkFileFilterInfo info;
-	GtkFileFilter *filter = NULL;
-	GSList *formatlist = NULL;
-	GSList *formatlisthead = NULL;
-	gchar *buf = NULL;
-
-	filter = gtk_file_filter_new();
-	//gtk_file_filter_add_pixbuf_formats(filter);
-	for (formatlist = formatlisthead = gdk_pixbuf_get_formats();
-	     formatlist != NULL; formatlist = g_slist_next(formatlist)) {
-		GdkPixbufFormat *pixformat =
-		    (GdkPixbufFormat *) formatlist->data;
-		gchar **extensions =
-		    gdk_pixbuf_format_get_extensions(pixformat);
-		int i;
-		for (i = 0; extensions[i] != NULL; i++) {
-			buf = (char *)g_malloc(strlen(extensions[i]) + 3);
-			sprintf(buf, "*.%s", extensions[i]);
-			gtk_file_filter_add_pattern(filter, buf);
-			g_free(buf);
-		}
-		g_strfreev(extensions);
-	}
-	g_slist_free(formatlisthead);
 
 	info.contains = GTK_FILE_FILTER_FILENAME | GTK_FILE_FILTER_DISPLAY_NAME;
 	gchar *lower_name = g_ascii_strdown(filename, -1);
@@ -164,8 +140,10 @@ GdkPixbufAnimation *load_anime_from_archive(const char *archname,
 	return anim;
 }
 
-/* all filelist->data shoud be g_free() */
-GList *get_filelist_from_archive(const char *archname)
+/* all filelist->data shoud be g_free()
+ * if filter == NULL, all files will be in the list
+ */
+GList *get_filelist_from_archive(const char *archname, GtkFileFilter * filter)
 {
 	GList *filelist = NULL;
 	gchar *filename = NULL;
@@ -181,7 +159,7 @@ GList *get_filelist_from_archive(const char *archname)
 	hrar = RAROpenArchive(&arcdata);
 
 	if (hrar == NULL)
-		return;
+		return NULL;
 	do {
 		struct RARHeaderData header;
 
@@ -190,10 +168,11 @@ GList *get_filelist_from_archive(const char *archname)
 				break;
 			RARCloseArchive(hrar);
 			//test_rar_file_password(buf, archname, archpath);
-			return;
+			return NULL;
 		}
 		filename = g_strdup(header.FileName);
-		if (is_supported_by_gdkpixbuf(filename))
+		if ((filter != NULL && gtk_filename_filter(filename, filter))
+		    || filter == NULL)
 			filelist = g_list_append(filelist, filename);
 	} while (RARProcessFile(hrar, RAR_SKIP, NULL, NULL) == 0);
 	RARCloseArchive(hrar);
@@ -231,4 +210,30 @@ void *load_libunrar(void *handle)
 		exit(EXIT_FAILURE);
 	}
 	return handle;
+}
+
+GtkFileFilter *load_gdkpixbuf_filename_filter(void)
+{
+	GtkFileFilter *filter = NULL;
+	GSList *formatlist = NULL;
+	GSList *formatlisthead = NULL;
+
+	filter = gtk_file_filter_new();
+	//gtk_file_filter_add_pixbuf_formats(filter);
+	for (formatlist = formatlisthead = gdk_pixbuf_get_formats();
+	     formatlist != NULL; formatlist = g_slist_next(formatlist)) {
+		GdkPixbufFormat *pixformat =
+		    (GdkPixbufFormat *) formatlist->data;
+		gchar **extensions =
+		    gdk_pixbuf_format_get_extensions(pixformat);
+		int i;
+		for (i = 0; extensions[i] != NULL; i++) {
+			gchar *pattern = g_strconcat("*.", extensions[i], NULL);
+			gtk_file_filter_add_pattern(filter, pattern);
+			g_free(pattern);
+		}
+		g_strfreev(extensions);
+	}
+	g_slist_free(formatlisthead);
+	return filter;
 }
