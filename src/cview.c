@@ -719,6 +719,7 @@ int main(int argc, char *argv[])
 
 	gtk_widget_show_all(GTK_WIDGET(main_window));
 	gtk_main();
-	dlclose(handle);
+	if (handle != NULL)
+		dlclose(handle);
 	return 0;
 }

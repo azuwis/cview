@@ -54,7 +54,7 @@ static void extract_rar_file_into_pixbuf(GdkPixbufLoader * loader,
 	arcdata.CmtBufSize = 0;
 	hrar = RAROpenArchive(&arcdata);
 
-	if (hrar == NULL)
+	if (hrar == NULL && loader == NULL)
 		return;
 	RARSetCallback(hrar, rarcbpixbuf, (LONG) loader);
 	do {
@@ -68,12 +68,6 @@ static void extract_rar_file_into_pixbuf(GdkPixbufLoader * loader,
 			return;
 		}
 		if (strcasecmp(header.FileName, archpath) == 0) {
-
-			//if (buf->ptr == NULL) {
-			//    RARCloseArchive(hrar);
-			//    return;
-			//}
-
 			code = RARProcessFile(hrar, RAR_TEST, NULL, NULL);
 			break;
 		}
@@ -140,7 +134,7 @@ GdkPixbufAnimation *load_anime_from_archive(const char *archname,
 	return anim;
 }
 
-/* all filelist->data shoud be g_free()
+/* all filelist->data should be g_free()
  * if filter == NULL, all files will be in the list
  */
 GList *get_filelist_from_archive(const char *archname, GtkFileFilter * filter)
@@ -180,10 +174,9 @@ GList *get_filelist_from_archive(const char *archname, GtkFileFilter * filter)
 	return filelist;
 }
 
+/* call dlclose(handle) at the end */
 void *load_libunrar(void *handle)
 {
-	/* call dlclose() at the end */
-
 	const char *error;
 	handle = dlopen("./libunrar.so", RTLD_LAZY);
 	if (!handle) {
