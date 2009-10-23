@@ -3,8 +3,21 @@
 #include <dlfcn.h>
 #include <string.h>
 #include <gtk/gtk.h>
+#include <zzip/lib.h>
 #include "unrar.h"
 #include "rarutils.h"
+
+static gboolean file_has_extension(const char *filename, const char *ext)
+{
+	char *fileext = NULL;
+	fileext = strrchr(filename, '.');
+	if (fileext != NULL) {
+		fileext++;
+		if (g_ascii_strcasecmp(fileext, ext) == 0)
+			return TRUE;
+	}
+	return FALSE;
+}
 
 static gboolean gtk_filename_filter(char *filename, GtkFileFilter * filter)
 {
@@ -39,7 +52,7 @@ static int rarcbpixbuf(UINT msg, LONG UserData, LONG P1, LONG P2)
 	return 0;
 }
 
-static void extract_rar_file_into_pixbuf(GdkPixbufLoader * loader,
+static void extract_rar_file_into_loader(GdkPixbufLoader * loader,
 					 const char *archname,
 					 const char *archpath)
 {
@@ -83,6 +96,34 @@ static void extract_rar_file_into_pixbuf(GdkPixbufLoader * loader,
 	}
 }
 
+static void extract_zip_file_into_loader(GdkPixbufLoader * loader,
+					 const char *archname,
+					 const char *archpath)
+{
+#define ZIPBUFSIZE 102400
+	if (loader == NULL)
+		return;
+	ZZIP_DIR *dir = zzip_dir_open(archname, 0);
+	ZZIP_FILE *fp = zzip_file_open(dir, archpath, 0);
+	if (fp) {
+		char buf[ZIPBUFSIZE];
+		GError *error = NULL;
+		zzip_ssize_t len = NULL;
+		while (len = zzip_file_read(fp, buf, ZIPBUFSIZE)) {
+			gdk_pixbuf_loader_write(loader, buf, len, &error);
+			if (error != NULL) {
+				g_warning("load image in zip failed: %s\n",
+					  error->message);
+				g_error_free(error);
+				zzip_dir_close(dir);
+				return;
+			}
+		}
+		zzip_file_close(fp);
+	}
+	zzip_dir_close(dir);
+}
+
 GdkPixbuf *load_pixbuf_from_archive(const char *archname, const char *archpath)
 {
 	GError *error = NULL;
@@ -93,7 +134,11 @@ GdkPixbuf *load_pixbuf_from_archive(const char *archname, const char *archpath)
 	if (loader == NULL)
 		return NULL;
 
-	extract_rar_file_into_pixbuf(loader, archname, archpath);
+	if (file_has_extension(archname, "rar")) {
+		extract_rar_file_into_loader(loader, archname, archpath);
+	} else if (file_has_extension(archname, "zip")) {
+		extract_zip_file_into_loader(loader, archname, archpath);
+	}
 	gdk_pixbuf_loader_close(loader, &error);
 	if (error != NULL) {
 		g_warning("load image \"%s\" in \"%s\" failed: %s\n", archpath,
@@ -119,7 +164,11 @@ GdkPixbufAnimation *load_anime_from_archive(const char *archname,
 	if (loader == NULL)
 		return NULL;
 
-	extract_rar_file_into_pixbuf(loader, archname, archpath);
+	if (file_has_extension(archname, "rar")) {
+		extract_rar_file_into_loader(loader, archname, archpath);
+	} else if (file_has_extension(archname, "zip")) {
+		extract_zip_file_into_loader(loader, archname, archpath);
+	}
 	gdk_pixbuf_loader_close(loader, &error);
 	if (error != NULL) {
 		g_warning("load image \"%s\" in \"%s\" failed: %s\n", archpath,
@@ -137,7 +186,8 @@ GdkPixbufAnimation *load_anime_from_archive(const char *archname,
 /* all filelist->data should be g_free()
  * if filter == NULL, all files will be in the list
  */
-GList *get_filelist_from_archive(const char *archname, GtkFileFilter * filter)
+static GList *get_filelist_from_rar(const char *archname,
+				    GtkFileFilter * filter)
 {
 	GList *filelist = NULL;
 	gchar *filename = NULL;
@@ -172,6 +222,37 @@ GList *get_filelist_from_archive(const char *archname, GtkFileFilter * filter)
 	RARCloseArchive(hrar);
 
 	return filelist;
+}
+
+GList *get_filelist_from_zip(const char *archname, GtkFileFilter * filter)
+{
+	GList *filelist = NULL;
+	gchar *filename = NULL;
+
+	ZZIP_DIR *dir = zzip_dir_open(archname, 0);
+	if (dir) {
+		ZZIP_DIRENT dirent;
+		while (zzip_dir_read(dir, &dirent) != 0) {
+			filename = g_strdup(dirent.d_name);
+			if ((filter != NULL
+			     && gtk_filename_filter(filename, filter))
+			    || filter == NULL)
+				filelist = g_list_append(filelist, filename);
+		}
+		zzip_dir_close(dir);
+	}
+	return filelist;
+
+}
+
+GList *get_filelist_from_archive(const char *archname, GtkFileFilter * filter)
+{
+	if (file_has_extension(archname, "rar")) {
+		return get_filelist_from_rar(archname, filter);
+	} else if (file_has_extension(archname, "zip")) {
+		return get_filelist_from_zip(archname, filter);
+	}
+	return NULL;
 }
 
 /* call dlclose(handle) at the end */

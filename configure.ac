@@ -12,7 +12,7 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 
 # Checks for libraries.
-PKG_CHECK_MODULES(DEPS, gthread-2.0 gio-2.0 >= 2.17.2 gtk+-2.0 gtkimageview >= 1.3)
+PKG_CHECK_MODULES(DEPS, gthread-2.0 gio-2.0 >= 2.17.2 gtk+-2.0 gtkimageview >= 1.3 zziplib)
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h string.h])
