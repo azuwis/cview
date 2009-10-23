@@ -7,7 +7,7 @@
 #include <dlfcn.h>
 #include "unrar.h"
 #include "config.h"
-#include "rarutils.h"
+#include "utils.h"
 
 // Library under test.
 #include <gtkimageview/gtkanimview.h>

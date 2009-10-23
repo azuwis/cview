@@ -5,7 +5,7 @@
 #include <gtk/gtk.h>
 #include <zzip/lib.h>
 #include "unrar.h"
-#include "rarutils.h"
+#include "utils.h"
 
 static gboolean file_has_extension(const char *filename, const char *ext)
 {

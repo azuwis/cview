@@ -4,7 +4,7 @@ bin_PROGRAMS = cview
 cview_CFLAGS = $(DEPS_CFLAGS) -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers
 cview_LDADD = $(DEPS_LIBS)
 cview_SOURCES = \
-		rarutils.c \
+		utils.c \
 		cview.c
 
 MAINTAINERCLEANFILES = Makefile.in config.h.in

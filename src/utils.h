@@ -1,5 +1,5 @@
-#ifndef _RARUTILS_H
-#define _RARUTILS_H
+#ifndef _UTILS_H
+#define _UTILS_H
 
 #ifdef __cplusplus
 extern "C" {
