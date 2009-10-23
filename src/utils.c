@@ -96,20 +96,20 @@ static void extract_rar_file_into_loader(GdkPixbufLoader * loader,
 	}
 }
 
+#define ZIPBUFSIZE 102400
 static void extract_zip_file_into_loader(GdkPixbufLoader * loader,
 					 const char *archname,
 					 const char *archpath)
 {
-#define ZIPBUFSIZE 102400
 	if (loader == NULL)
 		return;
 	ZZIP_DIR *dir = zzip_dir_open(archname, 0);
 	ZZIP_FILE *fp = zzip_file_open(dir, archpath, 0);
 	if (fp) {
-		char buf[ZIPBUFSIZE];
+		guchar buf[ZIPBUFSIZE];
 		GError *error = NULL;
-		zzip_ssize_t len = NULL;
-		while (len = zzip_file_read(fp, buf, ZIPBUFSIZE)) {
+		zzip_ssize_t len;
+		while ((len = zzip_file_read(fp, buf, ZIPBUFSIZE))) {
 			gdk_pixbuf_loader_write(loader, buf, len, &error);
 			if (error != NULL) {
 				g_warning("load image in zip failed: %s\n",
