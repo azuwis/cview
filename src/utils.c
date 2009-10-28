@@ -52,6 +52,7 @@ static int rarcbpixbuf(UINT msg, LONG UserData, LONG P1, LONG P2)
 	return 0;
 }
 
+/* XXX a return value indicate the status */
 static void extract_rar_file_into_loader(GdkPixbufLoader * loader,
 					 const char *archname,
 					 const char *archpath)
@@ -96,7 +97,8 @@ static void extract_rar_file_into_loader(GdkPixbufLoader * loader,
 	}
 }
 
-#define ZIPBUFSIZE 102400
+/* XXX a return value indicate the status */
+#define ZIPBUFSIZE 512000
 static void extract_zip_file_into_loader(GdkPixbufLoader * loader,
 					 const char *archname,
 					 const char *archpath)
@@ -256,13 +258,14 @@ GList *get_filelist_from_archive(const char *archname, GtkFileFilter * filter)
 }
 
 /* call dlclose(handle) at the end */
-void *load_libunrar(void *handle)
+void *load_libunrar(void)
 {
+	void *handle = NULL;
 	const char *error;
-	handle = dlopen("./libunrar.so", RTLD_LAZY);
+	handle = dlopen("libunrar.so", RTLD_LAZY);
 	if (!handle) {
 		fprintf(stderr, "%s\n", dlerror());
-		exit(EXIT_FAILURE);
+		return NULL;
 	}
 	dlerror();		/* Clear any existing error */
 
@@ -281,7 +284,7 @@ void *load_libunrar(void *handle)
 
 	if ((error = dlerror()) != NULL) {
 		fprintf(stderr, "%s\n", error);
-		exit(EXIT_FAILURE);
+		return NULL;
 	}
 	return handle;
 }
