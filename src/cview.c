@@ -33,12 +33,15 @@ static GtkActionGroup *transform_group = NULL;
 static GtkActionGroup *go_group = NULL;
 static gboolean is_fullscreen = FALSE;
 static GtkWidget *statusbar = NULL;
-static GList *entries = NULL;
+static GList *entry_list = NULL;
 static GList *current_entry = NULL;
 static GList *image_list = NULL;
 static GList *current_image = NULL;
 static gboolean rar_support = FALSE;
 static GtkFileFilter *gdkpixbuf_filter = NULL;
+/* total and current number of images of current entry*/
+static gint n_images = 0;
+static gint i_images = 0;
 
 // Label that displays the active selection.
 static GtkWidget *sel_info_label = NULL;
@@ -74,8 +77,9 @@ static void push_image_info(char *basename, GdkPixbufAnimation * anim)
 {
 	int width = gdk_pixbuf_animation_get_width(anim);
 	int height = gdk_pixbuf_animation_get_height(anim);
-	char *msg = g_strdup_printf("%s, %d x %d pixels",
-				    basename, width, height);
+	char *msg = g_strdup_printf("[%d/%d] %s, %d x %d pixels",
+				    i_images, n_images, basename, width,
+				    height);
 	gtk_statusbar_push(GTK_STATUSBAR(statusbar), image_info_cid, msg);
 	g_free(msg);
 }
@@ -101,16 +105,22 @@ static void load_image(const char *entry, const char *path)
 	g_object_unref(anim);
 
 	char *image_basename = NULL;
-	if (path != NULL)
-		image_basename = g_path_get_basename(path);
+	gchar *full_path = NULL;
 	char *arch_basename = g_path_get_basename(entry);
-	gchar *title = g_strdup_printf("%s: %s/%s", PACKAGE_NAME, arch_basename,
-				       image_basename);
+	if (path == NULL) {
+		full_path = arch_basename;
+	} else {
+		image_basename = g_path_get_basename(path);
+		full_path =
+		    g_strdup_printf("%s/%s", arch_basename, image_basename);
+		g_free(image_basename);
+		g_free(arch_basename);
+	}
+	gchar *title = g_strdup_printf("%s: %s", PACKAGE_NAME, full_path);
 	gtk_window_set_title(main_window, title);
-	push_image_info(image_basename, anim);
-	g_free(image_basename);
-	g_free(arch_basename);
+	push_image_info(full_path, anim);
 	g_free(title);
+	g_free(full_path);
 
 	gtk_action_group_set_sensitive(image_group, TRUE);
 
@@ -125,7 +135,7 @@ static void load_entry(const char *filename)
 {
 	g_list_foreach(image_list, (GFunc) g_free, NULL);
 	g_list_free(image_list);
-	image_list = NULL;
+	current_image = image_list = NULL;
 
 	if (g_file_test(filename, G_FILE_TEST_IS_REGULAR)) {
 		if (rar_support && file_has_extension(filename, "rar")) {
@@ -135,6 +145,7 @@ static void load_entry(const char *filename)
 			image_list =
 			    get_filelist_from_zip(filename, gdkpixbuf_filter);
 		} else if (gtk_filename_filter(filename, gdkpixbuf_filter)) {
+			n_images = i_images = 1;
 			load_image(filename, NULL);
 			return;
 		}
@@ -142,9 +153,13 @@ static void load_entry(const char *filename)
 		image_list = get_filelist_from_dir(filename, gdkpixbuf_filter);
 	}
 
+	n_images = g_list_length(image_list);
+
 	current_image = g_list_first(image_list);
-	if (current_image != NULL)
+	if (current_image != NULL) {
+		i_images = 1;
 		load_image(filename, current_image->data);
+	}
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -203,12 +218,12 @@ static void open_image_cb(GtkAction * action)
 {
 	GSList *filenames = NULL;
 	GSList *filenames_iter = NULL;
-	g_list_foreach(entries, (GFunc) g_free, NULL);
-	g_list_free(entries);
-	entries = NULL;
+	g_list_foreach(entry_list, (GFunc) g_free, NULL);
+	g_list_free(entry_list);
+	current_entry = entry_list = NULL;
 	g_list_foreach(image_list, (GFunc) g_free, NULL);
 	g_list_free(image_list);
-	image_list = NULL;
+	current_image = image_list = NULL;
 	if (!open_dialog)
 		init_open_dialog();
 	if (gtk_dialog_run(GTK_DIALOG(open_dialog)) == GTK_RESPONSE_ACCEPT) {
@@ -217,10 +232,11 @@ static void open_image_cb(GtkAction * action)
 						   (open_dialog));
 		for (filenames_iter = filenames; filenames_iter != NULL;
 		     filenames_iter = g_slist_next(filenames_iter)) {
-			entries = g_list_append(entries, filenames_iter->data);
+			entry_list =
+			    g_list_append(entry_list, filenames_iter->data);
 		}
 		g_slist_free(filenames);
-		current_entry = g_list_first(entries);
+		current_entry = g_list_first(entry_list);
 		load_entry(current_entry->data);
 	}
 	gtk_widget_hide(GTK_WIDGET(open_dialog));
@@ -285,11 +301,12 @@ static void go_next_cb(GtkAction * action)
 			current_entry = g_list_next(current_entry);
 			load_entry(current_entry->data);
 		} else {
-			fprintf(stderr, "Reach end of entries.\n");
+			fprintf(stderr, "Reach end of entry_list.\n");
 		}
 		return;
 	} else {
 		current_image = next_image;
+		i_images++;
 		load_image(current_entry->data, current_image->data);
 	}
 }
@@ -303,11 +320,12 @@ static void go_prev_cb(GtkAction * action)
 			current_entry = g_list_previous(current_entry);
 			load_entry(current_entry->data);
 		} else {
-			fprintf(stderr, "Reach beginning of entries.\n");
+			fprintf(stderr, "Reach beginning of entry_list.\n");
 		}
 		return;
 	} else {
 		current_image = prev_image;
+		i_images--;
 		load_image(current_entry->data, current_image->data);
 	}
 }
@@ -772,9 +790,9 @@ int main(int argc, char *argv[])
 	if (filenames) {
 		for (filenames_iter = filenames; *filenames_iter != NULL;
 		     filenames_iter++) {
-			entries = g_list_append(entries, *filenames_iter);
+			entry_list = g_list_append(entry_list, *filenames_iter);
 		}
-		current_entry = entries;
+		current_entry = entry_list;
 		load_entry(current_entry->data);
 	}
 
