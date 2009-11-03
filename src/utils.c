@@ -249,13 +249,13 @@ GList *get_filelist_from_zip(const char *archname, GtkFileFilter * filter)
 GList *get_filelist_from_dir(const char *dirname, GtkFileFilter * filter)
 {
 	GList *filelist = NULL;
-	gchar *dirent = NULL;
+	gchar *iter = NULL;
 	gchar *filename = NULL;
 
 	GDir *dir = g_dir_open(dirname, 0, NULL);
 	if (dir) {
-		while ((dirent = g_dir_read_name(dir)) != NULL) {
-			filename = g_strdup(dirent);
+		while (NULL != (iter = (gchar *) g_dir_read_name(dir))) {
+			filename = g_strdup(iter);
 			if ((filter != NULL
 			     && gtk_filename_filter(filename, filter))
 			    || filter == NULL)

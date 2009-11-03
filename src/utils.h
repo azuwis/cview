@@ -14,6 +14,12 @@ extern "C" {
 						    const char *archpath);
 	GList *get_filelist_from_entry(const char *entry,
 				       GtkFileFilter * filter);
+	GList *get_filelist_from_rar(const char *archname,
+				     GtkFileFilter * filter);
+	GList *get_filelist_from_zip(const char *archname,
+				     GtkFileFilter * filter);
+	GList *get_filelist_from_dir(const char *dirname,
+				     GtkFileFilter * filter);
 	void *load_libunrar(void);
 	GtkFileFilter *load_gdkpixbuf_filename_filter(void);
 

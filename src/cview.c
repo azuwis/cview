@@ -127,11 +127,19 @@ static void load_entry(const char *filename)
 	g_list_free(image_list);
 	image_list = NULL;
 
-	image_list = get_filelist_from_entry(filename, gdkpixbuf_filter);
-	if (image_list == NULL
-	    && gtk_filename_filter(filename, gdkpixbuf_filter)) {
-		load_image(filename, NULL);
-		return;
+	if (g_file_test(filename, G_FILE_TEST_IS_REGULAR)) {
+		if (rar_support && file_has_extension(filename, "rar")) {
+			image_list =
+			    get_filelist_from_rar(filename, gdkpixbuf_filter);
+		} else if (file_has_extension(filename, "zip")) {
+			image_list =
+			    get_filelist_from_zip(filename, gdkpixbuf_filter);
+		} else if (gtk_filename_filter(filename, gdkpixbuf_filter)) {
+			load_image(filename, NULL);
+			return;
+		}
+	} else if (g_file_test(filename, G_FILE_TEST_IS_DIR)) {
+		image_list = get_filelist_from_dir(filename, gdkpixbuf_filter);
 	}
 
 	current_image = g_list_first(image_list);
