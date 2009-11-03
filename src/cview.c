@@ -80,23 +80,30 @@ static void push_image_info(char *basename, GdkPixbufAnimation * anim)
 	g_free(msg);
 }
 
-static void load_image(const char *archname, const char *path)
+static void load_image(const char *entry, const char *path)
 {
 	GdkPixbufAnimation *anim = NULL;
 
-	if (archname == NULL)
-		anim = gdk_pixbuf_animation_new_from_file(path, NULL);
-	else
-		anim = load_anime_from_archive(archname, path);
+	if (path == NULL) {
+		anim = gdk_pixbuf_animation_new_from_file(entry, NULL);
+	} else if (g_str_has_suffix(entry, "/")) {
+		gchar *full_name = g_strconcat(entry, path, NULL);
+		anim = gdk_pixbuf_animation_new_from_file(full_name, NULL);
+		g_free(full_name);
+	} else {
+		anim = load_anime_from_archive(entry, path);
+	}
 	if (!anim) {
-		printf("No anim!\n");
+		fprintf(stderr, "Could not load image.\n");
 		return;
 	}
 	gtk_anim_view_set_anim(view, anim);
 	g_object_unref(anim);
 
-	char *image_basename = g_path_get_basename(path);
-	char *arch_basename = g_path_get_basename(archname);
+	char *image_basename = NULL;
+	if (path != NULL)
+		image_basename = g_path_get_basename(path);
+	char *arch_basename = g_path_get_basename(entry);
 	gchar *title = g_strdup_printf("%s: %s/%s", PACKAGE_NAME, arch_basename,
 				       image_basename);
 	gtk_window_set_title(main_window, title);
@@ -113,12 +120,20 @@ static void load_image(const char *archname, const char *path)
 	gtk_action_group_set_sensitive(transform_group, is_image);
 }
 
+/* TODO add regular file and directory support */
 static void load_entry(const char *filename)
 {
 	g_list_foreach(image_list, (GFunc) g_free, NULL);
 	g_list_free(image_list);
 	image_list = NULL;
-	image_list = get_filelist_from_archive(filename, gdkpixbuf_filter);
+
+	image_list = get_filelist_from_entry(filename, gdkpixbuf_filter);
+	if (image_list == NULL
+	    && gtk_filename_filter(filename, gdkpixbuf_filter)) {
+		load_image(filename, NULL);
+		return;
+	}
+
 	current_image = g_list_first(image_list);
 	if (current_image != NULL)
 		load_image(filename, current_image->data);

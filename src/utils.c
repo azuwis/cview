@@ -7,7 +7,7 @@
 #include "unrar.h"
 #include "utils.h"
 
-static gboolean file_has_extension(const char *filename, const char *ext)
+gboolean file_has_extension(const char *filename, const char *ext)
 {
 	char *fileext = NULL;
 	fileext = strrchr(filename, '.');
@@ -19,7 +19,7 @@ static gboolean file_has_extension(const char *filename, const char *ext)
 	return FALSE;
 }
 
-static gboolean gtk_filename_filter(char *filename, GtkFileFilter * filter)
+gboolean gtk_filename_filter(const char *filename, GtkFileFilter * filter)
 {
 	gboolean ret = FALSE;
 	GtkFileFilterInfo info;
@@ -188,8 +188,7 @@ GdkPixbufAnimation *load_anime_from_archive(const char *archname,
 /* all filelist->data should be g_free()
  * if filter == NULL, all files will be in the list
  */
-static GList *get_filelist_from_rar(const char *archname,
-				    GtkFileFilter * filter)
+GList *get_filelist_from_rar(const char *archname, GtkFileFilter * filter)
 {
 	GList *filelist = NULL;
 	gchar *filename = NULL;
@@ -247,12 +246,36 @@ GList *get_filelist_from_zip(const char *archname, GtkFileFilter * filter)
 
 }
 
-GList *get_filelist_from_archive(const char *archname, GtkFileFilter * filter)
+GList *get_filelist_from_dir(const char *dirname, GtkFileFilter * filter)
 {
-	if (file_has_extension(archname, "rar")) {
-		return get_filelist_from_rar(archname, filter);
-	} else if (file_has_extension(archname, "zip")) {
-		return get_filelist_from_zip(archname, filter);
+	GList *filelist = NULL;
+	gchar *dirent = NULL;
+	gchar *filename = NULL;
+
+	GDir *dir = g_dir_open(dirname, 0, NULL);
+	if (dir) {
+		while ((dirent = g_dir_read_name(dir)) != NULL) {
+			filename = g_strdup(dirent);
+			if ((filter != NULL
+			     && gtk_filename_filter(filename, filter))
+			    || filter == NULL)
+				filelist = g_list_append(filelist, filename);
+		}
+		g_dir_close(dir);
+	}
+	return filelist;
+}
+
+GList *get_filelist_from_entry(const char *entry, GtkFileFilter * filter)
+{
+	if (g_file_test(entry, G_FILE_TEST_IS_REGULAR)) {
+		if (file_has_extension(entry, "rar")) {
+			return get_filelist_from_rar(entry, filter);
+		} else if (file_has_extension(entry, "zip")) {
+			return get_filelist_from_zip(entry, filter);
+		}
+	} else if (g_file_test(entry, G_FILE_TEST_IS_DIR)) {
+		return get_filelist_from_dir(entry, filter);
 	}
 	return NULL;
 }
